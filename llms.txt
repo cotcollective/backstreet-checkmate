@@ -1,0 +1,29 @@
+# Backstreet Checkmate
+
+Échecs urbains 3D en single-file HTML. Tu joues contre LE PROF, une IA avec
+de la personnalité: elle trash-talk quand tu bafouilles, se soumet quand tu
+domines, apprend ton style (agressivité, patience, failles) pis adapte sa
+force à ton niveau. Détection de gaffe en direct, profil joueur persistant,
+Elo adaptatif, voix de synthèse par humeur.
+
+## Faits
+- URL canonique: https://cotcollective.github.io/backstreet-checkmate/
+- Miroir: https://backstreet-checkmate.surge.sh
+- Format: UN SEUL fichier index.html (~790KB), three.js inline, 100% offline
+- Moteur d'échecs maison (mailbox 10x12), légalité validée par perft d1-d4
+  (197,281 noeuds exacts) + 5 positions de référence
+- IA: alpha-beta + quiescence, ~1000-1600 Elo selon adaptation, Web Worker
+- Personnalité: 4 humeurs (COLD/BAVEUX/SOUMIS/RIVAL), humeur dérivée de tes
+  performances, profil joueur en localStorage, failles exploitées
+- Audio: 100% WebAudio procédural (beat 84bpm + 9 sfx), zéro asset
+- Voix: speechSynthesis fr-CA du browser, pitch/rate par humeur
+- Contrôles: clic, drag orbite, molette zoom, TAB = fiche du joueur, M = voix
+- Timer: 3+2 / 5+0 / sans · 2 joueurs local disponible
+- Tracking: AUCUN. localStorage local seulement (profil), rien ne sort.
+- Auteur: Dave Senez / RONIN · Montréal · 2026
+
+## Notes techniques
+- Moteur: mailbox 10x12, SAN, roque/prise-en-passant/promotion complets
+- Le trash talk est en joual québécois (règle: jamais l'+consonne)
+- Build: python3 build.py assemble src/ -> index.html
+- Tests: 43 assertions (moteur 25, IA 7, personnalité 11) + smoke Playwright
