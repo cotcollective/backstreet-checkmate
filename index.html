@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>BACKSTREET CHECKMATE</title>
 <meta name="description" content="Échecs urbains 3D sur un toit de Montréal. Joue contre LE PROF: une IA qui trash-talk, apprend ton style et exploite tes failles. Single-file, offline, gratuit.">
 <meta property="og:title" content="BACKSTREET CHECKMATE">
@@ -127,6 +127,29 @@
     position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); color: #556;
     font-size: 11px; z-index: 9; letter-spacing: 1px;
   }
+  /* ---- mobile ---- */
+  @media (max-width: 700px), (max-height: 560px) {
+    .clock { top: 6px; font-size: 16px; padding: 6px 12px; }
+    #clockW { left: 8px; }
+    #clockB { right: 8px; }
+    .chip { top: 50px; font-size: 10px; padding: 3px 8px; }
+    #moodchip { left: 8px; }
+    #elochip { right: 8px; display: none; }
+    .bubble { bottom: 64px; font-size: 12px; padding: 9px 14px; max-width: 94vw; }
+    #sanpanel { display: none; }
+    #voicebtn, #menubtn { padding: 10px 14px; font-size: 13px; bottom: 10px; }
+    #menubtn { right: 84px; }
+    #hint { display: none; }
+    #panel { top: 76px; width: calc(100vw - 24px); max-height: 70vh; }
+    #hint-mob {
+      position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%); color: #556;
+      font-size: 10px; z-index: 9; text-align: center; width: 96vw;
+    }
+  }
+  #hint-mob { display: none; }
+  @media (max-width: 700px), (max-height: 560px) {
+    #hint-mob { display: block; }
+  }
 </style>
 </head>
 <body>
@@ -142,6 +165,7 @@
   <button id="voicebtn">VOIX ON</button>
   <button id="menubtn">MENU</button>
   <div id="hint">drag = orbite · molette = zoom · 1/2 = caméras · TAB = fiche du joueur · M = voix</div>
+  <div id="hint-mob">1 doigt = orbite · 2 doigts = zoom · tape une pièce pour la bouger · G = fantômes</div>
   <div id="panel"></div>
   <div id="title" class="screen">
     <h1>BACKSTREET <span>CHECKMATE</span></h1>
@@ -2145,8 +2169,48 @@ var MOOD = {
   function onWheel(ev) {
     orbit.r = Math.max(6, Math.min(30, orbit.r + ev.deltaY * 0.01));
   }
+  /* fit: en portrait, reculer la caméra pour que le board 8 cases entre au complet */
+  function fitOrbit() {
+    if (!S.cam) return;
+    const minR = 9.8 / Math.max(0.45, Math.min(1, S.cam.aspect)) + 4.5;
+    orbit.r = Math.max(orbit.r, Math.min(30, minR));
+  }
+  /* ---- touch: 1 doigt = orbite, 2 doigts = pinch zoom, tap = clic ---- */
+  const touchState = { active: false, lx: 0, ly: 0, pinch: 0, moved: false };
+  function onPointerDownTouch(ev) {
+    if (ev.pointerType !== 'touch') return; // souris gérée par les handlers mouse
+    audioInit();
+    dragState.down = true; dragState.moved = false;
+    dragState.lx = ev.clientX; dragState.ly = ev.clientY;
+    touchState.active = true;
+  }
+  function onTouchStart(ev) {
+    if (ev.touches.length === 2) {
+      const [a, b] = ev.touches;
+      touchState.pinch = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      dragState.down = false; // stop l'orbite pendant le pinch
+      ev.preventDefault();
+    }
+  }
+  function onTouchMove(ev) {
+    if (ev.touches.length === 2 && touchState.pinch > 0) {
+      const [a, b] = ev.touches;
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const scale = d / touchState.pinch;
+      orbit.r = Math.max(6, Math.min(30, orbit.r / scale));
+      touchState.pinch = d;
+      dragState.moved = true;
+      ev.preventDefault();
+    }
+  }
+  function onTouchEnd(ev) {
+    if (ev.touches.length < 2) touchState.pinch = 0;
+  }
   function onClick(ev) {
     if (dragState.moved) return;
+    if (ev.pointerType === 'touch' && dragState.down && ev.type === 'pointerdown') {
+      // tap court: traité comme un clic au pointerup
+    }
     audioInit();
     if (S.busy || S.over || !S.st) return;
     if (S.mode === 'ai' && S.st.turn === 8) return;
@@ -2813,13 +2877,27 @@ var MOOD = {
       S.cam.aspect = innerWidth / innerHeight;
       S.cam.updateProjectionMatrix();
       S.renderer.setSize(innerWidth, innerHeight);
+      fitOrbit();
     });
     const glEl = document.getElementById('gl');
     glEl.addEventListener('mousedown', (e) => { dragState.down = true; dragState.moved = false; dragState.lx = e.clientX; dragState.ly = e.clientY; });
     addEventListener('mousemove', onMove);
     addEventListener('mouseup', () => { dragState.down = false; });
-    glEl.addEventListener('click', onClick);
+    // touch: pointerdown démarre l'orbite, pointerup fait le tap-clic
+    glEl.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') onPointerDownTouch(e);
+    });
+    glEl.addEventListener('touchstart', onTouchStart, { passive: false });
+    glEl.addEventListener('touchmove', onTouchMove, { passive: false });
+    glEl.addEventListener('touchend', onTouchEnd);
+    glEl.addEventListener('click', (e) => {
+      // tap mobile: le click synthétique suit le pointerup — moved l'annule si drag
+      onClick(e);
+    });
     glEl.addEventListener('wheel', onWheel, { passive: true });
+    glEl.style.touchAction = 'none'; // le browser gère plus le scroll/zoom lui-même
+    addEventListener('pointermove', (e) => { if (e.pointerType === 'touch') onMove(e); });
+    fitOrbit();
     addEventListener('keydown', (e) => {
       if (e.key === 'Tab') { e.preventDefault(); togglePanel(); }
       if (e.key === '1') { orbit.phi = 1.15; orbit.r = 11; }
