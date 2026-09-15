@@ -1312,9 +1312,11 @@ function updateElo(state, result) {
   return delta;
 }
 
-/* ---------- la force suit l'Elo ---------- */
+/* ---------- la force suit LE JOUEUR (pas l'IA) ----------
+   playerElo monte quand tu gagnes -> le PROF durcit. L'inverse
+   (rubber-band) ferait l'effondrement inverse de «de mieux en mieux». */
 function searchOpts(state, profile) {
-  const elo = state.elo || 800;
+  const elo = state.playerElo || 800;
   const map = [
     { min: 0, max: 750, depth: 2, timeMs: 400, wobble: 0.35 },
     { min: 750, max: 1050, depth: 3, timeMs: 700, wobble: 0.22 },
